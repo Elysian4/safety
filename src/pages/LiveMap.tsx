@@ -1,70 +1,97 @@
-import React from 'react';
-import { MapPin } from 'lucide-react';
-import Map from '../components/Map';
-import { useSafetyStore } from '../store/safetyStore';
-import { format } from 'date-fns';
+import { useEffect, useRef } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css"; // Leaflet CSS for map styling
+import useLocalStorage from "../hooks/useLocalStorage";
+import useGeolocation from "../hooks/useGeolocation";
 
-const LiveMap = () => {
-  const { currentLocation, status } = useSafetyStore();
+export default function Map() {
+  const mapRef = useRef<HTMLDivElement>(null); // Ref for the map container
+  const mapInstance = useRef<L.Map | null>(null); // Ref for Leaflet map instance
+  const userMarkerRef = useRef<L.Marker | null>(null); // Ref for the user marker
 
-  return (
-    <div className="min-h-screen pt-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Live Location Tracking</h1>
-            <div className="flex items-center gap-2 text-blue-600">
-              <MapPin className="w-5 h-5" />
-              <span className="font-medium">Live</span>
-            </div>
-          </div>
-          
-          <div className="h-[600px] relative">
-            <Map className="w-full h-full" />
-            
-            {/* SOS Button */}
-            <button 
-              className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all duration-300 hover:scale-105"
-              onClick={() => alert('SOS Activated! Emergency services have been notified.')}
-            >
-              <span className="font-bold text-lg">SOS</span>
-            </button>
-          </div>
-
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-blue-50 rounded-lg p-4">
-              <h3 className="font-medium text-blue-900">Current Location</h3>
-              <p className="text-blue-700 mt-1">
-                {currentLocation 
-                  ? `${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}`
-                  : 'Updating...'}
-              </p>
-            </div>
-            <div className={`${
-              status === 'safe' ? 'bg-green-50' : 'bg-red-50'
-            } rounded-lg p-4`}>
-              <h3 className={`font-medium ${
-                status === 'safe' ? 'text-green-900' : 'text-red-900'
-              }`}>Safety Status</h3>
-              <p className={`mt-1 ${
-                status === 'safe' ? 'text-green-700' : 'text-red-700'
-              }`}>
-                {status === 'safe' ? 'Safe Zone' : 'At Risk'}
-              </p>
-            </div>
-            <div className="bg-purple-50 rounded-lg p-4">
-              <h3 className="font-medium text-purple-900">Last Updated</h3>
-              <p className="text-purple-700 mt-1">
-                {currentLocation
-                  ? format(new Date(currentLocation.timestamp), 'HH:mm:ss')
-                  : 'Never'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+  // Store user position with default India coordinates
+  const [userPosition, setUserPosition] = useLocalStorage<{ latitude: number; longitude: number }>(
+    "USER_MARKER",
+    { latitude: 20.5937, longitude: 78.9629 } // Default: India
   );
-};
 
-export default LiveMap;
+  // Store nearby markers
+  const [nearbyMarkers, setNearbyMarkers] = useLocalStorage<{ latitude: number; longitude: number }[]>(
+    "NEARBY_MARKERS",
+    []
+  );
+
+  // Get user location or fallback to India
+  const location = useGeolocation();
+  const currentPosition = location || userPosition; // Use geolocation if available, otherwise use last stored position
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Initialize map only once
+    if (!mapInstance.current) {
+      mapInstance.current = L.map(mapRef.current).setView([currentPosition.latitude, currentPosition.longitude], 5);
+
+      // Add OpenStreetMap tile layer
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(mapInstance.current);
+    }
+  }, []); // Runs only on mount
+
+  useEffect(() => {
+    if (!mapInstance.current) return;
+    const map = mapInstance.current;
+
+    // Remove the previous user marker if it exists
+    if (userMarkerRef.current) {
+      map.removeLayer(userMarkerRef.current);
+    }
+
+    // Add a new user marker
+    userMarkerRef.current = L.marker([currentPosition.latitude, currentPosition.longitude], {
+      icon: L.icon({
+        iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png", // Default marker icon
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+      }),
+    })
+      .addTo(map)
+      .bindPopup("You are here")
+      .openPopup();
+
+    // Center map on user location
+    map.setView([currentPosition.latitude, currentPosition.longitude], map.getZoom());
+
+    // Store updated user position
+    setUserPosition({ latitude: currentPosition.latitude, longitude: currentPosition.longitude });
+
+    // Load and display nearby markers
+    nearbyMarkers.forEach(({ latitude, longitude }) => {
+      L.marker([latitude, longitude])
+        .addTo(map)
+        .bindPopup(`Lat: ${latitude.toFixed(2)}, Long: ${longitude.toFixed(2)}`);
+    });
+
+    // Handle map click to add new markers
+    const handleClick = (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      L.marker([lat, lng])
+        .addTo(map)
+        .bindPopup(`Lat: ${lat.toFixed(2)}, Long: ${lng.toFixed(2)}`);
+
+      // Update nearbyMarkers state
+      setNearbyMarkers((prevMarkers) => [...prevMarkers, { latitude: lat, longitude: lng }]);
+    };
+
+    map.on("click", handleClick);
+
+    // Cleanup event listener on component unmount
+    return () => {
+      map.off("click", handleClick);
+    };
+  }, [currentPosition.latitude, currentPosition.longitude, nearbyMarkers]); // Updates when location changes
+
+  return <div ref={mapRef} className="map-container" />;
+}

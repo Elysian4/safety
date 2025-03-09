@@ -1,13 +1,22 @@
-import React, { useState } from 'react';
-import { History, Search, Calendar, MapPin } from 'lucide-react';
-import { useSafetyStore } from '../store/safetyStore';
-import { format } from 'date-fns';
-import Map from '../components/Map';
+import React, { useState } from "react";
+import { Search, Calendar, MapPin } from "lucide-react";
+import { useSafetyStore } from "../store/safetyStore";
+import { format } from "date-fns";
+import Map from "../components/Map";
 
 const TrackingHistory = () => {
-  const { locationHistory } = useSafetyStore();
-  const [searchTerm, setSearchTerm] = useState('');
+  const { locationHistory } = useSafetyStore(); // Fetch location history
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
+
+  // Define center safely
+  const center: { lat: number; lng: number } =
+    selectedLocation !== null && locationHistory[selectedLocation]
+      ? {
+          lat: locationHistory[selectedLocation].lat,
+          lng: locationHistory[selectedLocation].lng,
+        }
+      : { lat: 40.712776, lng: -74.005974 }; // Default to New York if empty
 
   return (
     <div className="min-h-screen pt-16">
@@ -35,15 +44,15 @@ const TrackingHistory = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-4">
-              {locationHistory.map((location, index) => (
-                <div 
-                  key={location.timestamp}
-                  className={`border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                    selectedLocation === index ? 'border-blue-500 bg-blue-50' : ''
-                  }`}
-                  onClick={() => setSelectedLocation(index)}
-                >
-                  <div className="flex items-center justify-between">
+              {locationHistory.length > 0 ? (
+                locationHistory.map((location, index) => (
+                  <div
+                    key={location.timestamp}
+                    className={`border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+                      selectedLocation === index ? "border-blue-500 bg-blue-50" : ""
+                    }`}
+                    onClick={() => setSelectedLocation(index)}
+                  >
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                         <MapPin className="w-5 h-5 text-blue-600" />
@@ -53,24 +62,19 @@ const TrackingHistory = () => {
                           {`${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`}
                         </h3>
                         <p className="text-sm text-gray-500">
-                          {format(new Date(location.timestamp), 'PPpp')}
+                          {format(new Date(location.timestamp), "PPpp")}
                         </p>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-gray-500">No location history available.</p>
+              )}
             </div>
 
             <div className="h-[600px] rounded-lg overflow-hidden">
-              {selectedLocation !== null && locationHistory[selectedLocation] && (
-                <Map
-                  center={{
-                    lat: locationHistory[selectedLocation].lat,
-                    lng: locationHistory[selectedLocation].lng,
-                  }}
-                />
-              )}
+              <Map center={center} />
             </div>
           </div>
         </div>

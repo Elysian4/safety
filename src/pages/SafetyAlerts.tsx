@@ -34,7 +34,7 @@ const SafetyAlerts = () => {
               </div>
             </div>
 
-            {/* Warning Alert */}
+            {/* Warning Alert
             <div className="border-l-4 border-yellow-500 bg-yellow-50 rounded-r-lg p-4">
               <div className="flex items-center gap-3">
                 <AlertTriangle className="w-6 h-6 text-yellow-600" />
@@ -51,7 +51,7 @@ const SafetyAlerts = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* Info Alert */}
             <div className="border-l-4 border-blue-500 bg-blue-50 rounded-r-lg p-4">

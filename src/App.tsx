@@ -5,10 +5,11 @@ import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import LiveMap from './pages/LiveMap';
 import TrackingHistory from './pages/TrackingHistory';
-import SafetyAlerts from './pages/SafetyAlerts';
 import DevicePairing from './pages/DevicePairing';
 import Help from './pages/Help';
 import Privacy from './pages/Privacy';
+import Login from './pages/Login';
+import SignUp from './pages/SignUp'; // Import SignUp page
 
 function App() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -24,17 +25,23 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-gray-50">
+      <div className="flex flex-col min-h-screen bg-gray-50">
+        {/* Navbar remains fixed at the top */}
         <Navbar isScrolled={isScrolled} />
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/live-map" element={<LiveMap />} />
-          <Route path="/tracking-history" element={<TrackingHistory />} />
-          <Route path="/safety-alerts" element={<SafetyAlerts />} />
-          <Route path="/device-pairing" element={<DevicePairing />} />
-          <Route path="/help" element={<Help />} />
-          <Route path="/privacy" element={<Privacy />} />
-        </Routes>
+        
+        {/* Page content wrapper to prevent overlap with the fixed navbar */}
+        <div className="flex-1 pt-16"> {/* Adjust pt-16 based on Navbar height */}
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/live-map" element={<LiveMap />} />
+            <Route path="/tracking-history" element={<TrackingHistory />} />
+            <Route path="/device-pairing" element={<DevicePairing />} />
+            <Route path="/help" element={<Help />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<SignUp />} /> {/* Added SignUp Route */}
+          </Routes>
+        </div>
         
         {/* Global SOS Button */}
         <button 
